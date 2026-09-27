@@ -1,5 +1,5 @@
 {
-  "version": "3.0.0",
+  "version": "3.0.1",
   "checks": {
     "manifest_json_parse": true,
     "theme_css_properties": [
@@ -33,13 +33,15 @@
     "host_permissions": [
       "https://chatgpt.com/*",
       "https://chat.openai.com/*"
-    ]
+    ],
+    "composer_wrappers_unpainted": true
   },
   "issues": [],
   "notes": [
     "theme.css is a color-only layer: ChatGPT design tokens are declared once on <html> and inherited by every element, because ChatGPT redefines them on every element under its dark root.",
     "Composer, code block and writing block roots re-point the page tokens to their own palette color; everything inside inherits it.",
     "Only background-color and border-color are overridden directly, on surfaces ChatGPT paints without a matching token.",
+    "Only composer elements that are the rounded input itself are painted; the newer data-composer-layout / ComposerModeSurface wrappers are square boxes and are left to the tokens.",
     "Removed all layout overrides from 2.x: assistant message cards, table sizing, content-visibility, z-index on the composer container and the start-at-bottom scroll timers.",
     "The previous z-index on #thread-bottom-container lifted the page composer above the image editor, which showed two message boxes.",
     "data-oled is removed while the theme is active and restored when the theme is disabled.",

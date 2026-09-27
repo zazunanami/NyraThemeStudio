@@ -83,6 +83,9 @@ The project name, logos, icons, screenshots, visual identity, and branding asset
 <details>
 <summary>Release History & Changelog</summary>
 
+### v3.0.1
+- Fixed a square box showing behind the rounded message input on the new ChatGPT composer. Composer wrappers are no longer painted; the input keeps ChatGPT's own rounded shape and takes its color from the theme tokens.
+
 ### v3.0.0
 - Rebuilt the theme as a color-only layer for ChatGPT's current interface: it recolors ChatGPT's design tokens instead of restyling individual page elements.
 - Fixed the black band behind the message input and the pure black areas left by ChatGPT's OLED dark mode.

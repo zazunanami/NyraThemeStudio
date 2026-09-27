@@ -148,7 +148,7 @@ html[data-nyra-theme-studio="on"] :is(pre, [data-markdown-copy="code-block"]) {
 }
 
 /* Composer. */
-html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"], [class*="ComposerModeSurface-"], [data-composer-dark][data-composer-layout]) {
+html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"]) {
   --bg-primary: var(--nyra-input-bg) !important;
   --main-surface-primary: var(--nyra-input-bg) !important;
   --color-surface: var(--nyra-input-bg) !important;
@@ -185,12 +185,14 @@ html[data-nyra-theme-studio="on"] main:is([data-app-shell-main-surface], [class*
   background-color: var(--nyra-chat-bg) !important;
 }
 
-/* The composer is painted from --bg-primary by a higher-specificity rule. */
-html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"], [class*="ComposerModeSurface-"], [data-composer-dark][data-composer-layout]) {
+/* The composer is painted from --bg-primary by a higher-specificity rule.
+   Newer composer wrappers (data-composer-layout, ComposerModeSurface) are
+   square boxes around the rounded input, so they are left to the tokens. */
+html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"]) {
   background-color: var(--nyra-input-bg) !important;
 }
 
-html[data-nyra-theme-studio="on"] :is([data-user-message-bubble="true"], .user-message-bubble-color) {
+html[data-nyra-theme-studio="on"] .user-message-bubble-color {
   background-color: var(--nyra-message-bg) !important;
 }
 
