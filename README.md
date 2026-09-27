@@ -7,17 +7,30 @@ If you want, you can get from [Google Extension Store](https://chromewebstore.go
 - **Five Premium Presets**: Switch instantly between Classic Gray, Graphite, Midnight Blue, Warm Charcoal, and Slate Purple.
 - **Custom Theme Slots**: Edit, preview, and save up to 3 custom color configurations.
 - **Detailed Surface Controls**: Customize specific visual components:
-  - Chat background
+  - Chat background (page, header and the fade behind the input)
   - Message bubble
-  - Message input box
-  - Content panels & code blocks
+  - Input box & menus
+  - Content panels (code blocks and inline code)
   - Writing block editor
-  - Sidebar background, hover, and active states
+  - Sidebar, with hover and selected shades derived automatically
+- **Colors Only**: Nyra recolors ChatGPT's own design tokens. It never changes layout, spacing, sizes, positioning, stacking or scrolling, so ChatGPT's interface keeps working as designed after OpenAI updates.
+- **Replaces the Pure Black Look**: Works on top of ChatGPT's OLED-black dark mode and restores a calm, layered palette.
 - **Performance Optimized**:
-  - Pure CSS property injection with near-zero repaint overhead.
-  - Zero DOM polling loops, zero recurring full-page scans, and zero active subtree observers.
-  - Precise ChatGPT DOM targeting to avoid layout jumps or square wrapper backgrounds.
+  - Pure CSS custom property injection; no DOM scanning or polling.
+  - A single attribute observer on `<html>`/`<body>` follows ChatGPT's dark/light switch.
 - **Privacy First**: Fully local. No tracking, no data collection, and no remote calls.
+
+Nyra presets are dark themes, so they apply while ChatGPT's appearance is set to Dark. In Light mode ChatGPT keeps its native look and the popup shows a short note.
+
+## How It Works
+
+ChatGPT paints its interface with design tokens such as `--main-surface-primary`, `--bg-primary`, `--component-sidebar-bg` and `--color-surface`, and it redefines those tokens on every element under its dark root.
+
+1. `content.js` turns the six chosen colors into a small palette of `--nyra-*` custom properties on `<html>` and marks the page with `data-nyra-theme-studio="on"` while ChatGPT is dark.
+2. `theme.css` points ChatGPT's tokens at that palette on `<html>` and tells every element to inherit them, so ChatGPT's per-element black values no longer win. Components such as the composer, code blocks and writing blocks re-point the tokens on their own root.
+3. A handful of surfaces that ChatGPT paints without a token (the composer, user message bubble, code block shell, inline code, writing blocks) get a `background-color`/`border-color` override and nothing else.
+
+If an OpenAI update ever leaves a surface black, the fix is usually one more token name in the bridge at the top of `theme.css`.
 
 ## Installation for Local Testing
 
@@ -30,8 +43,8 @@ If you want, you can get from [Google Extension Store](https://chromewebstore.go
 ## Build Contents
 
 - `manifest.json` - Extension manifest configuration and permissions
-- `content.js` - Injector script managing theme variables and event listeners
-- `theme.css` - Custom properties and page layout stylesheet
+- `content.js` - Builds the palette from the saved colors and keeps the page in sync with ChatGPT's dark/light mode
+- `theme.css` - Color-only token bridge that maps ChatGPT's design tokens to the palette
 - `popup.html` - Popup control interface
 - `popup.css` - Popup styling and responsive layouts
 - `popup.js` - Popup logic, presets, theme editor, and storage coordination
@@ -69,6 +82,16 @@ The project name, logos, icons, screenshots, visual identity, and branding asset
 
 <details>
 <summary>Release History & Changelog</summary>
+
+### v3.0.0
+- Rebuilt the theme as a color-only layer for ChatGPT's current interface: it recolors ChatGPT's design tokens instead of restyling individual page elements.
+- Fixed the black band behind the message input and the pure black areas left by ChatGPT's OLED dark mode.
+- Fixed the sidebar top area showing the chat color instead of the sidebar color.
+- Fixed a second message box appearing over the image editor ("Edit image"); the theme no longer changes stacking order.
+- Fixed the lighter box inside code blocks; inline code chips now only apply to real inline code.
+- Removed every layout override (message width and padding, table sizing, scroll position, `content-visibility`, z-index). Assistant replies use ChatGPT's native layout; the Message bubble color now applies to your own messages.
+- Themes apply while ChatGPT is in Dark mode; the popup notes when ChatGPT is in Light mode.
+- Popup: each color control describes what it changes, and the first click on Save/Update after typing a hex value is no longer lost.
 
 ### v2.0.59
 - Slightly reduced the Midnight Blue writing-block editor brightness.

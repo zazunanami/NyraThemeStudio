@@ -10,10 +10,6 @@ const DEFAULT_THEME = {
   sidebar: "#1e1b26"
 };
 
-const DEFAULT_OPTIONS = {
-  matchPanelColorCodes: false
-};
-
 const LEGACY_KEYS = {
   pageBackground: "chatBackground",
   mainBackground: "chatBackground",
@@ -92,19 +88,18 @@ const PRESETS = {
 const DEFAULT_PRESET_KEY = Object.keys(PRESETS)[0];
 
 const FIELDS = [
-  ["chatBackground", "Chat background"],
-  ["messageBubble", "Message bubble"],
-  ["inputBox", "Message input box"],
-  ["contentPanel", "Content panels"],
-  ["writingBlock", "Writing block editor"],
-  ["sidebar", "Sidebar"]
+  ["chatBackground", "Chat background", "Page, header and the fade behind the input"],
+  ["messageBubble", "Message bubble", "Your own messages"],
+  ["inputBox", "Input box & menus", "Message box, menus and popovers"],
+  ["contentPanel", "Content panels", "Code blocks and inline code"],
+  ["writingBlock", "Writing block editor", "Document and email writing blocks"],
+  ["sidebar", "Sidebar", "Sidebar, with hover and selection shades"]
 ];
 
 const EMPTY_CUSTOM_THEMES = Array.from({ length: CUSTOM_THEME_LIMIT }, () => null);
 
 let currentTheme = { ...DEFAULT_THEME };
 let draftTheme = { ...DEFAULT_THEME };
-let currentOptions = { ...DEFAULT_OPTIONS };
 let customThemes = [...EMPTY_CUSTOM_THEMES];
 let enabled = true;
 let editorVisible = false;
@@ -113,6 +108,8 @@ let saveTimer = 0;
 let isBusy = false;
 let activeSource = null;
 let editorSession = null;
+let renderedSlotsKey = "";
+let renderedSaveActionsKey = "";
 
 function isHex(value) {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
@@ -140,10 +137,6 @@ function sanitize(theme) {
   }
 
   return result;
-}
-
-function normalizeOptions(_value) {
-  return { matchPanelColorCodes: false };
 }
 
 function getCustomSlotName(index) {
@@ -230,13 +223,12 @@ function normalizeState(value) {
     return {
       enabled: true,
       theme: { ...DEFAULT_THEME },
-      options: { ...DEFAULT_OPTIONS },
       customThemes: [...EMPTY_CUSTOM_THEMES],
       activeSource: null
     };
   }
 
-  if ("theme" in value || "enabled" in value || "options" in value || "customThemes" in value) {
+  if ("theme" in value || "enabled" in value || "customThemes" in value) {
     const nextEnabled = value.enabled !== false;
     const nextTheme = sanitize(value.theme || value);
     const nextCustomThemes = normalizeCustomThemes(value.customThemes);
@@ -244,7 +236,6 @@ function normalizeState(value) {
     return {
       enabled: nextEnabled,
       theme: nextTheme,
-      options: normalizeOptions(value.options),
       customThemes: nextCustomThemes,
       activeSource: normalizeActiveSource(value.activeSource, nextTheme, nextCustomThemes, nextEnabled)
     };
@@ -253,7 +244,6 @@ function normalizeState(value) {
   return {
     enabled: true,
     theme: sanitize(value),
-    options: { ...DEFAULT_OPTIONS },
     customThemes: [...EMPTY_CUSTOM_THEMES],
     activeSource: null
   };
@@ -361,7 +351,15 @@ function updateControls() {
   updateDisableVisual();
 }
 
-function broadcast(theme, isEnabled, options) {
+function updateAppearanceNotice(status) {
+  const notice = document.getElementById("appearanceNotice");
+
+  if (notice) {
+    notice.classList.toggle("is-hidden", !status || status.dark !== false);
+  }
+}
+
+function broadcast(theme, isEnabled) {
   const safeTheme = sanitize(theme);
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -374,15 +372,14 @@ function broadcast(theme, isEnabled, options) {
     chrome.tabs.sendMessage(tab.id, {
       type: "NYRA_THEME_APPLY",
       enabled: isEnabled,
-      theme: safeTheme,
-      options
-    }, () => {
-      chrome.runtime.lastError;
+      theme: safeTheme
+    }, (status) => {
+      updateAppearanceNotice(chrome.runtime.lastError ? null : status);
     });
   });
 }
 
-function save(theme, isEnabled, options, successText = getDefaultSaveStatus(isEnabled), shouldShowLoading = false, loadingText = "Applying...") {
+function save(theme, isEnabled, successText = getDefaultSaveStatus(isEnabled), shouldShowLoading = false, loadingText = "Applying...") {
   const safeTheme = sanitize(theme);
   clearTimeout(saveTimer);
 
@@ -395,7 +392,6 @@ function save(theme, isEnabled, options, successText = getDefaultSaveStatus(isEn
       [STORAGE_KEY]: {
         enabled: isEnabled,
         theme: safeTheme,
-        options,
         customThemes,
         activeSource
       }
@@ -410,8 +406,8 @@ function save(theme, isEnabled, options, successText = getDefaultSaveStatus(isEn
 
 function pushState(successText, shouldShowLoading = false, loadingText = "Applying...") {
   updateControls();
-  broadcast(currentTheme, enabled, currentOptions);
-  save(currentTheme, enabled, currentOptions, successText, shouldShowLoading, loadingText);
+  broadcast(currentTheme, enabled);
+  save(currentTheme, enabled, successText, shouldShowLoading, loadingText);
 }
 
 function ensureFallbackActiveTheme() {
@@ -459,7 +455,6 @@ function restoreEditorState(successText, shouldShowLoading = false, loadingText 
 function applyTheme(theme, successText = "Saved locally. Applies live.", shouldShowLoading = false, loadingText = "Applying...") {
   editorSession = null;
   enabled = true;
-  currentOptions = { ...DEFAULT_OPTIONS };
   currentTheme = sanitize(theme);
   draftTheme = sanitize(theme);
   pushState(successText, shouldShowLoading, loadingText);
@@ -486,7 +481,7 @@ function applyCustomTheme(slot, index) {
 function updateDraftTheme(partialTheme) {
   draftTheme = sanitize({ ...draftTheme, ...partialTheme });
   updateControls();
-  broadcast(draftTheme, true, currentOptions);
+  broadcast(draftTheme, true);
   setStatus("Previewing custom theme.");
 }
 
@@ -503,7 +498,7 @@ function openCustomizer(baseTheme = currentTheme, slotIndex = null) {
   editorVisible = true;
   editingSlotIndex = Number.isInteger(slotIndex) ? slotIndex : null;
   updateControls();
-  broadcast(draftTheme, true, currentOptions);
+  broadcast(draftTheme, true);
 
   if (editingSlotIndex === null) {
     setStatus("Theme editor open. Adjust colors, then save to one of the three custom slots.");
@@ -552,7 +547,7 @@ function deleteCustomSlot(index) {
   }
 
   updateControls();
-  save(currentTheme, enabled, currentOptions, `${getCustomSlotName(index)} deleted.`, true, "Deleting custom theme...");
+  save(currentTheme, enabled, `${getCustomSlotName(index)} deleted.`, true, "Deleting custom theme...");
 }
 
 function disableTheme() {
@@ -561,8 +556,8 @@ function disableTheme() {
   editorVisible = false;
   editingSlotIndex = null;
   updateControls();
-  broadcast(currentTheme, false, currentOptions);
-  save(currentTheme, false, currentOptions, getDefaultSaveStatus(false), true, "Disabling theme...");
+  broadcast(currentTheme, false);
+  save(currentTheme, false, getDefaultSaveStatus(false), true, "Disabling theme...");
 }
 
 function enableTheme() {
@@ -602,12 +597,17 @@ function createPreset(key, preset) {
   return button;
 }
 
-function createField(key, labelText) {
+function createField(key, labelText, hintText) {
   const row = document.createElement("div");
   row.className = "color-row";
 
   const label = document.createElement("label");
-  label.textContent = labelText;
+  const name = document.createElement("span");
+  const hint = document.createElement("span");
+  name.textContent = labelText;
+  hint.className = "field-hint";
+  hint.textContent = hintText;
+  label.append(name, hint);
   label.htmlFor = `${key}-color`;
 
   const color = document.createElement("input");
@@ -640,7 +640,16 @@ function createField(key, labelText) {
   return row;
 }
 
+/* Slot cards and save buttons are rebuilt only when what they show changes.
+   Rebuilding them on every color input or blur swallowed the next click. */
 function renderCustomThemeSlots() {
+  const key = JSON.stringify([customThemes, editorVisible, editingSlotIndex, enabled, activeSource]);
+
+  if (key === renderedSlotsKey) {
+    return;
+  }
+
+  renderedSlotsKey = key;
   const container = document.getElementById("customThemeSlots");
   container.textContent = "";
 
@@ -720,6 +729,13 @@ function renderCustomThemeSlots() {
 }
 
 function renderSaveSlotActions() {
+  const key = String(editingSlotIndex);
+
+  if (key === renderedSaveActionsKey) {
+    return;
+  }
+
+  renderedSaveActionsKey = key;
   const container = document.getElementById("saveSlotActions");
   container.textContent = "";
 
@@ -744,8 +760,8 @@ function init() {
     presetContainer.appendChild(createPreset(key, preset));
   }
 
-  for (const [key, label] of FIELDS) {
-    colorContainer.appendChild(createField(key, label));
+  for (const [key, label, hint] of FIELDS) {
+    colorContainer.appendChild(createField(key, label, hint));
   }
 
   disableButton.addEventListener("click", toggleThemeEnabled);
@@ -754,7 +770,6 @@ function init() {
     [STORAGE_KEY]: {
       enabled: true,
       theme: DEFAULT_THEME,
-      options: DEFAULT_OPTIONS,
       customThemes: EMPTY_CUSTOM_THEMES
     }
   }, (result) => {
@@ -763,16 +778,15 @@ function init() {
     enabled = state.enabled;
     currentTheme = state.theme;
     draftTheme = state.theme;
-    currentOptions = state.options;
     customThemes = state.customThemes;
     activeSource = state.activeSource;
 
     ensureFallbackActiveTheme();
 
     updateControls();
-    broadcast(currentTheme, enabled, currentOptions);
+    broadcast(currentTheme, enabled);
     if (enabled && !hadActiveSource) {
-      save(currentTheme, enabled, currentOptions, "Default theme selected.");
+      save(currentTheme, enabled, "Default theme selected.");
     }
     setStatus(getDefaultSaveStatus(enabled));
   });

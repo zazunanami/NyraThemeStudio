@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Nyra Theme Studio",
   "short_name": "Nyra Theme",
-  "version": "2.0.59",
+  "version": "3.0.0",
   "description": "Dark theme presets and surface controls for ChatGPT.",
   "permissions": [
     "storage",

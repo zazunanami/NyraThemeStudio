@@ -1,410 +1,224 @@
+/*
+ * Nyra Theme Studio - color layer for ChatGPT.
+ *
+ * This file only changes colors. It never touches layout, spacing, sizes,
+ * positioning, stacking (z-index), overflow or scrolling, so ChatGPT keeps
+ * full control of its own layout when OpenAI ships UI updates.
+ *
+ * 1. content.js writes the palette as --nyra-* properties on <html> and sets
+ *    data-nyra-theme-studio="on" while ChatGPT is in its dark appearance.
+ * 2. The token bridge points ChatGPT's own design tokens at that palette, so
+ *    every native component that paints with a token follows the theme.
+ * 3. The few surfaces ChatGPT paints without a matching token get a
+ *    background-color override and nothing else.
+ */
+
+/* ---------------------------------------------------------------------------
+   Token bridge
+   Values are declared once on <html>. ChatGPT redefines the same tokens on
+   every element under its dark root, which would shadow a value set on
+   <html> alone, so every element is told to inherit them instead. A
+   component scope below can then re-point a token on its own root element
+   and the whole component follows. Light-themed subtrees (some popovers and
+   previews) keep ChatGPT's native tokens.
+   Keep the two property lists in sync.
+   ------------------------------------------------------------------------- */
+
 html[data-nyra-theme-studio="on"] {
-  color-scheme: dark !important;
+  --nyra-hover-fill: rgb(255 255 255 / 0.08);
+  --nyra-active-fill: rgb(255 255 255 / 0.14);
 
-  --nyra-chat-bg: #22202a;
-  --nyra-chat-bg-transparent: rgb(34 32 42 / 0);
-  --nyra-message-bg: #17151e;
-  --nyra-message-border: #26232f;
-  --nyra-input-bg: #2b2835;
-  --nyra-input-border: #44424d;
-  --nyra-panel-bg: #1f1d26;
-  --nyra-panel-border: #302d3a;
-  --nyra-panel-button-bg: #33313b;
-  --nyra-writing-block-bg: #243a63;
-  --nyra-writing-block-border: #344775;
-  --nyra-sidebar-bg: #1e1b26;
-  --nyra-sidebar-hover-bg: #302d37;
-  --nyra-sidebar-selected-bg: #423f49;
-  --nyra-code-bg: #35333b;
-
+  /* Chat background: page, header, thread and the fade behind the composer. */
   --main-surface-primary: var(--nyra-chat-bg) !important;
-  --surface-primary: var(--nyra-chat-bg) !important;
+  --main-surface-secondary: var(--nyra-chat-raised) !important;
+  --main-surface-tertiary: var(--nyra-chat-raised-2) !important;
+  --main-surface-background: var(--nyra-chat-glass) !important;
+  --bg-primary: var(--nyra-chat-bg) !important;
+  --bg-secondary: var(--nyra-chat-raised) !important;
+  --bg-tertiary: var(--nyra-chat-raised-2) !important;
+  --bg-elevated-secondary: var(--nyra-chat-bg) !important;
+  --color-surface: var(--nyra-chat-bg) !important;
+  --color-surface-primary: var(--nyra-chat-bg) !important;
+  --color-surface-secondary: var(--nyra-chat-raised) !important;
+  --color-surface-tertiary: var(--nyra-chat-raised-2) !important;
+  --color-surface-elevated-secondary: var(--nyra-chat-raised) !important;
+  --color-background-primary: var(--nyra-chat-bg) !important;
+  --color-background-secondary: var(--nyra-chat-raised) !important;
+  --color-background-tertiary: var(--nyra-chat-raised-2) !important;
+  --color-background-panel: var(--nyra-chat-bg) !important;
+
+  /* Input box & menus: the composer and the elevated surfaces sharing its color. */
+  --bg-elevated-primary: var(--nyra-input-bg) !important;
+  --color-surface-elevated: var(--nyra-input-bg) !important;
+  --color-surface-elevated-primary: var(--nyra-input-bg) !important;
+  --composer-surface: var(--nyra-input-bg) !important;
+  --composer-surface-primary: var(--nyra-input-bg) !important;
+
+  /* Sidebar. */
+  --component-sidebar-bg: var(--nyra-sidebar-bg) !important;
+  --sidebar-surface: var(--nyra-sidebar-bg) !important;
   --sidebar-surface-primary: var(--nyra-sidebar-bg) !important;
   --sidebar-surface-secondary: var(--nyra-sidebar-hover-bg) !important;
-  --composer-surface: var(--nyra-input-bg) !important;
-  --composer-surface-primary: var(--nyra-input-bg) !important;
+  --sidebar-surface-tertiary: var(--nyra-sidebar-selected-bg) !important;
+  --bg-secondary-surface: var(--nyra-sidebar-bg) !important;
+
+  /* Message bubble. */
   --message-surface: var(--nyra-message-bg) !important;
+  --theme-user-msg-bg: var(--nyra-message-bg) !important;
+
+  /* Writing block editor. */
+  --wb-surface-primary: var(--nyra-writing-block-bg) !important;
+  --wb-surface-secondary: var(--nyra-panel-bg) !important;
+  --wb-border: var(--nyra-writing-block-border) !important;
+
+  /* Hover and selection fills are translucent, so they sit correctly on the
+     sidebar, on menus and on the page alike. */
+  --menu-item-highlighted: var(--nyra-hover-fill) !important;
+  --menu-item-active: var(--nyra-active-fill) !important;
+  --menu-item-open: var(--nyra-active-fill) !important;
+  --surface-hover: var(--nyra-hover-fill) !important;
 }
 
-html[data-nyra-theme-studio="on"],
-html[data-nyra-theme-studio="on"] body,
-html[data-nyra-theme-studio="on"] body > div,
-html[data-nyra-theme-studio="on"] body > div > div,
-html[data-nyra-theme-studio="on"] body > div > div > div,
-html[data-nyra-theme-studio="on"] #__next,
-html[data-nyra-theme-studio="on"] #root,
-html[data-nyra-theme-studio="on"] [data-testid="app"],
-html[data-nyra-theme-studio="on"] [class*="min-h-screen"],
-html[data-nyra-theme-studio="on"] [class*="h-screen"],
-html[data-nyra-theme-studio="on"] [class*="h-dvh"],
-html[data-nyra-theme-studio="on"] [class*="min-h-dvh"] {
-  background: var(--nyra-chat-bg) !important;
+html[data-nyra-theme-studio="on"] :not(:where(.light, .light *)) {
+  --main-surface-primary: inherit !important;
+  --main-surface-secondary: inherit !important;
+  --main-surface-tertiary: inherit !important;
+  --main-surface-background: inherit !important;
+  --bg-primary: inherit !important;
+  --bg-secondary: inherit !important;
+  --bg-tertiary: inherit !important;
+  --bg-elevated-secondary: inherit !important;
+  --color-surface: inherit !important;
+  --color-surface-primary: inherit !important;
+  --color-surface-secondary: inherit !important;
+  --color-surface-tertiary: inherit !important;
+  --color-surface-elevated-secondary: inherit !important;
+  --color-background-primary: inherit !important;
+  --color-background-secondary: inherit !important;
+  --color-background-tertiary: inherit !important;
+  --color-background-panel: inherit !important;
+  --bg-elevated-primary: inherit !important;
+  --color-surface-elevated: inherit !important;
+  --color-surface-elevated-primary: inherit !important;
+  --composer-surface: inherit !important;
+  --composer-surface-primary: inherit !important;
+  --component-sidebar-bg: inherit !important;
+  --sidebar-surface: inherit !important;
+  --sidebar-surface-primary: inherit !important;
+  --sidebar-surface-secondary: inherit !important;
+  --sidebar-surface-tertiary: inherit !important;
+  --bg-secondary-surface: inherit !important;
+  --message-surface: inherit !important;
+  --theme-user-msg-bg: inherit !important;
+  --wb-surface-primary: inherit !important;
+  --wb-surface-secondary: inherit !important;
+  --wb-border: inherit !important;
+  --menu-item-highlighted: inherit !important;
+  --menu-item-active: inherit !important;
+  --menu-item-open: inherit !important;
+  --surface-hover: inherit !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Component scopes
+   Inside these components the "page" tokens describe the component's own
+   surface, so they are re-pointed on the component root and inherited by
+   everything inside it.
+   ------------------------------------------------------------------------- */
+
+/* Writing blocks (markdown, text, email and document editors). */
+html[data-nyra-theme-studio="on"] :is([data-oai-writing-block-surface], [data-writing-block="true"]) {
+  --bg-primary: var(--nyra-writing-block-bg) !important;
+  --main-surface-primary: var(--nyra-writing-block-bg) !important;
+  --color-surface: var(--nyra-writing-block-bg) !important;
+}
+
+/* Code blocks. Older markup paints the code shell with --sidebar-surface-primary. */
+html[data-nyra-theme-studio="on"] :is(pre, [data-markdown-copy="code-block"]) {
+  --sidebar-surface-primary: var(--nyra-panel-bg) !important;
+  --bg-primary: var(--nyra-panel-bg) !important;
+  --main-surface-primary: var(--nyra-panel-bg) !important;
+  --color-surface: var(--nyra-panel-bg) !important;
+  --bg-elevated-primary: var(--nyra-panel-bg) !important;
+  --bg-elevated-secondary: var(--nyra-panel-bg) !important;
+  --color-surface-elevated: var(--nyra-panel-bg) !important;
+  --bg-secondary: var(--nyra-panel-raised) !important;
+  --main-surface-secondary: var(--nyra-panel-raised) !important;
+  --color-surface-secondary: var(--nyra-panel-raised) !important;
+}
+
+/* Composer. */
+html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"], [class*="ComposerModeSurface-"], [data-composer-dark][data-composer-layout]) {
+  --bg-primary: var(--nyra-input-bg) !important;
+  --main-surface-primary: var(--nyra-input-bg) !important;
+  --color-surface: var(--nyra-input-bg) !important;
+  --color-surface-primary: var(--nyra-input-bg) !important;
+  --bg-secondary: var(--nyra-input-raised) !important;
+  --main-surface-secondary: var(--nyra-input-raised) !important;
+  --color-surface-secondary: var(--nyra-input-raised) !important;
+  --bg-tertiary: var(--nyra-input-raised-2) !important;
+  --main-surface-tertiary: var(--nyra-input-raised-2) !important;
+  --color-surface-tertiary: var(--nyra-input-raised-2) !important;
+}
+
+/* Fades such as the one behind the composer use Tailwind gradient stops.
+   Re-point them at the surface token of whichever scope they sit in. */
+html[data-nyra-theme-studio="on"] [class~="from-surface"] {
+  --tw-gradient-from: var(--color-surface) !important;
+}
+
+html[data-nyra-theme-studio="on"] [class~="via-surface"] {
+  --tw-gradient-via: var(--color-surface) !important;
+}
+
+html[data-nyra-theme-studio="on"] [class~="to-surface"] {
+  --tw-gradient-to: var(--color-surface) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Direct surface colors
+   Only background-color / border-color, only on elements that are a visible
+   surface in ChatGPT's own markup.
+   ------------------------------------------------------------------------- */
+
+html[data-nyra-theme-studio="on"] main:is([data-app-shell-main-surface], [class*="MainContentSurface-"]) {
   background-color: var(--nyra-chat-bg) !important;
-  background-image: none !important;
 }
 
-html[data-nyra-theme-studio="on"] main,
-html[data-nyra-theme-studio="on"] [role="main"],
-html[data-nyra-theme-studio="on"] #thread,
-html[data-nyra-theme-studio="on"] .composer-parent,
-html[data-nyra-theme-studio="on"] [data-voice-floating-orb-focus-background],
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"],
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"] > div,
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"] [data-conversation-screenshot-content],
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"] [class*="group/turn-messages"],
-html[data-nyra-theme-studio="on"] .bg-token-main-surface-primary,
-html[data-nyra-theme-studio="on"] [class*="bg-token-main-surface-primary"] {
-  background: var(--nyra-chat-bg) !important;
-  background-color: var(--nyra-chat-bg) !important;
-  background-image: none !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown,
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .user-message-bubble-color,
-html[data-nyra-theme-studio="on"] .user-message-bubble-color {
-  background: var(--nyra-message-bg) !important;
-  background-color: var(--nyra-message-bg) !important;
-  background-image: none !important;
-  border: 1px solid var(--nyra-message-border) !important;
-  border-radius: 18px !important;
-  box-sizing: border-box !important;
-  padding: 12px 16px !important;
-  width: fit-content !important;
-  max-width: 100% !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-/* Assistant action buttons must not follow Content panels. */
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown + div,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown + div *,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="Paylaş"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="Share"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="Tekrar"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="Try"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="Eylem"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] button[aria-label*="More"] {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
-html[data-nyra-theme-studio="on"] header,
-html[data-nyra-theme-studio="on"] [class*="sticky"][class*="top-0"] {
-  background: var(--nyra-chat-bg) !important;
-  background-color: var(--nyra-chat-bg) !important;
-}
-
-html[data-nyra-theme-studio="on"] nav,
-html[data-nyra-theme-studio="on"] aside,
-html[data-nyra-theme-studio="on"] .bg-token-sidebar-surface-primary,
-html[data-nyra-theme-studio="on"] [class*="bg-token-sidebar-surface-primary"] {
-  background-color: var(--nyra-sidebar-bg) !important;
-}
-
-html[data-nyra-theme-studio="on"] nav a,
-html[data-nyra-theme-studio="on"] aside a,
-html[data-nyra-theme-studio="on"] nav button,
-html[data-nyra-theme-studio="on"] aside button,
-html[data-nyra-theme-studio="on"] .bg-token-sidebar-surface-secondary,
-html[data-nyra-theme-studio="on"] [class*="bg-token-sidebar-surface-secondary"] {
-  background-color: transparent !important;
-}
-
-html[data-nyra-theme-studio="on"] nav a:hover,
-html[data-nyra-theme-studio="on"] aside a:hover,
-html[data-nyra-theme-studio="on"] nav button:hover,
-html[data-nyra-theme-studio="on"] aside button:hover {
-  background-color: var(--nyra-sidebar-hover-bg) !important;
-}
-
-html[data-nyra-theme-studio="on"] nav [aria-current="page"],
-html[data-nyra-theme-studio="on"] aside [aria-current="page"],
-html[data-nyra-theme-studio="on"] nav [data-active],
-html[data-nyra-theme-studio="on"] aside [data-active],
-html[data-nyra-theme-studio="on"] nav [class*="bg-token-sidebar-surface-secondary"],
-html[data-nyra-theme-studio="on"] aside [class*="bg-token-sidebar-surface-secondary"] {
-  background-color: var(--nyra-sidebar-selected-bg) !important;
-}
-
-html[data-nyra-theme-studio="on"] #thread-bottom-container,
-html[data-nyra-theme-studio="on"] #thread-bottom,
-html[data-nyra-theme-studio="on"] main > div:last-child,
-html[data-nyra-theme-studio="on"] [role="main"] > div:last-child,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div > div,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .content-fade,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .single-line,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .content-fade-single-line,
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="content-fade"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="thread-bottom"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="--thread-content-margin"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="px-(--thread-content-margin)"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="text-base"][class*="mx-auto"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="bottom-0"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="inset-x-0"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="sticky"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="fixed"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [view-transition-name],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [style*="--vt-disclaimer"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container .text-token-text-tertiary {
-  background: var(--nyra-chat-bg) !important;
-  background-color: var(--nyra-chat-bg) !important;
-  background-image: none !important;
-}
-
-html[data-nyra-theme-studio="on"] #thread-bottom-container::before,
-html[data-nyra-theme-studio="on"] #thread-bottom-container::after,
-html[data-nyra-theme-studio="on"] #thread-bottom::before,
-html[data-nyra-theme-studio="on"] #thread-bottom::after,
-html[data-nyra-theme-studio="on"] main > div:last-child::before,
-html[data-nyra-theme-studio="on"] main > div:last-child::after,
-html[data-nyra-theme-studio="on"] [role="main"] > div:last-child::before,
-html[data-nyra-theme-studio="on"] [role="main"] > div:last-child::after,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div::before,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div::after,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div::before,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div::after,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div > div::before,
-html[data-nyra-theme-studio="on"] #thread-bottom-container > div > div > div::after {
-  background: var(--nyra-chat-bg) !important;
-  background-color: var(--nyra-chat-bg) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
-}
-
-html[data-nyra-theme-studio="on"] #thread-bottom-container {
-  --composer-surface: var(--nyra-input-bg) !important;
-  --composer-surface-primary: var(--nyra-input-bg) !important;
-  position: relative !important;
-  z-index: 2147483001 !important;
-}
-
-html[data-nyra-theme-studio="on"] #thread-bottom-container [data-composer-surface="true"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container .shadow-short-composer,
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="shadow-short-composer"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [class*="bg-(--composer-surface"],
-html[data-nyra-theme-studio="on"] #composer-background,
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] {
-  background: var(--nyra-input-bg) !important;
+/* The composer is painted from --bg-primary by a higher-specificity rule. */
+html[data-nyra-theme-studio="on"] :is([data-composer-surface="true"], [id="composer-background"], [class*="ComposerModeSurface-"], [data-composer-dark][data-composer-layout]) {
   background-color: var(--nyra-input-bg) !important;
-  background-image: none !important;
-  border-color: var(--nyra-input-border) !important;
 }
 
-html[data-nyra-theme-studio="on"] #thread-bottom-container .__composer-pill,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .__composer-pill *,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .composer-btn,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .composer-btn *,
-html[data-nyra-theme-studio="on"] #thread-bottom-container button:not(#composer-submit-button),
-html[data-nyra-theme-studio="on"] #thread-bottom-container button:not(#composer-submit-button) *,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .text-token-text-tertiary,
-html[data-nyra-theme-studio="on"] #thread-bottom-container svg {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
+html[data-nyra-theme-studio="on"] :is([data-user-message-bubble="true"], .user-message-bubble-color) {
+  background-color: var(--nyra-message-bg) !important;
 }
 
-html[data-nyra-theme-studio="on"] #thread-bottom-container textarea,
-html[data-nyra-theme-studio="on"] #thread-bottom-container [contenteditable="true"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container [role="textbox"],
-html[data-nyra-theme-studio="on"] #thread-bottom-container #prompt-textarea,
-html[data-nyra-theme-studio="on"] #thread-bottom-container .ProseMirror,
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] textarea,
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] [contenteditable="true"],
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] [role="textbox"],
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] #prompt-textarea,
-html[data-nyra-theme-studio="on"] [data-composer-surface="true"] .ProseMirror {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-/* Inline code chips follow Content panels; full code blocks inherit the message surface. */
-html[data-nyra-theme-studio="on"] :not(pre) > code {
-  background-color: var(--nyra-code-bg) !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown div:has(> pre),
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown div:has(> div > pre),
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre *,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre code,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-editor,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-scroller,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-content,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-line,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-gutters,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre .cm-gutter {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown pre {
-  border-color: color-mix(in srgb, currentColor 14%, transparent) !important;
-  border-radius: 18px !important;
-  overflow: hidden !important;
-}
-
-/* Writing blocks use Content panels for the shell and a dedicated editor surface inside. */
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown div:has(> [data-testid="writing-block-header-surface"]),
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown div:has([data-testid="writing-block-header-surface"]):not([data-testid="writing-block-header-surface"]) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] {
-  background: var(--nyra-panel-bg) !important;
+/* The rounded shell of a code block. It clips its header and body, so both
+   can be recolored without touching their shape. */
+html[data-nyra-theme-studio="on"] :is(pre, [data-markdown-copy="code-block"]) > [class*="rounded"],
+html[data-nyra-theme-studio="on"] [data-markdown-copy="code-block"][class*="rounded"] {
   background-color: var(--nyra-panel-bg) !important;
-  background-image: none !important;
-  border: 1px solid var(--nyra-panel-border) !important;
-  border-bottom: 0 !important;
-  border-radius: 18px 18px 0 0 !important;
-  overflow: hidden !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-writing-block-fullscreen-header-surface="true"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] [class*="bg-token-bg-primary"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] [class*="dark:bg-[#2a2a2a]"] {
-  background: var(--nyra-panel-bg) !important;
-  background-color: var(--nyra-panel-bg) !important;
-  background-image: none !important;
-  border-radius: inherit !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-writing-block-fullscreen-header-chrome="true"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-magic-edit-layout"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-magic-edit-entrypoint"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-magic-edit-controls"] {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-magic-edit-button"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-magic-edit-composer"],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] button[aria-label],
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] [role="button"] {
-  background: var(--nyra-panel-button-bg) !important;
-  background-color: var(--nyra-panel-button-bg) !important;
-  background-image: none !important;
   border-color: var(--nyra-panel-border) !important;
 }
 
-html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] + div {
-  background: var(--nyra-panel-bg) !important;
-  background-color: var(--nyra-panel-bg) !important;
-  background-image: none !important;
-  border: 1px solid var(--nyra-panel-border) !important;
-  border-top: 0 !important;
-  border-radius: 0 0 18px 18px !important;
-  overflow: hidden !important;
+html[data-nyra-theme-studio="on"] [data-markdown-copy="code-block"] > [data-markdown-copy="exclude"] {
+  background-color: var(--nyra-panel-header-bg) !important;
 }
 
-html[data-nyra-theme-studio="on"] .writing-block-editor,
-html[data-nyra-theme-studio="on"] [class*="writing-block-editor"] {
-  background: var(--nyra-writing-block-bg) !important;
-  background-color: var(--nyra-writing-block-bg) !important;
-  background-image: none !important;
-  border: 1px solid var(--nyra-writing-block-border) !important;
-  border-radius: 18px !important;
-  overflow: hidden !important;
-}
-
-html[data-nyra-theme-studio="on"] .writing-block-editor .ProseMirror,
-html[data-nyra-theme-studio="on"] [class*="writing-block-editor"] .ProseMirror,
-html[data-nyra-theme-studio="on"] .writing-block-editor [data-writing-block-fullscreen-editor-region="true"],
-html[data-nyra-theme-studio="on"] [class*="writing-block-editor"] [data-writing-block-fullscreen-editor-region="true"] {
-  background: transparent !important;
+html[data-nyra-theme-studio="on"] :is(pre, [data-markdown-copy="code-block"]) :is(code, .cm-editor, .cm-scroller, .cm-gutters) {
   background-color: transparent !important;
-  background-image: none !important;
 }
 
-/* Long conversations must keep their real layout height so refresh restoration
-   and browser scroll anchoring do not jump between estimated turn heights. */
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"] {
-  content-visibility: visible !important;
+/* Inline code chips only; code inside a code block keeps the block surface. */
+html[data-nyra-theme-studio="on"] code:not(pre code, [data-markdown-copy="code-block"] code, .cm-editor code, [class*="language-"], .hljs) {
+  background-color: var(--nyra-code-bg) !important;
 }
 
-/* Flex and grid children default to min-width:auto, which lets wide markdown
-   tables expand the entire ChatGPT page instead of their own scroll wrapper. */
-html[data-nyra-theme-studio="on"] main,
-html[data-nyra-theme-studio="on"] [role="main"],
-html[data-nyra-theme-studio="on"] #thread,
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"],
-html[data-nyra-theme-studio="on"] section[data-testid^="conversation-turn-"] > div,
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"],
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] {
-  min-width: 0 !important;
+html[data-nyra-theme-studio="on"] :is([data-oai-writing-block-surface], [data-writing-block="true"] .relative.z-\[1\], .writing-block-editor) {
+  background-color: var(--nyra-writing-block-bg) !important;
 }
 
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown,
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown {
-  min-width: 0 !important;
-  max-width: 100% !important;
-}
-
-/* Table messages use the available message width. Only the native table
-   wrapper scrolls horizontally; the page and conversation scroller stay put. */
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown:has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown:has(table) {
-  width: 100% !important;
-  overflow: hidden !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown .overflow-x-auto:has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown .overflow-x-auto:has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown > :is(div, figure):has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown > :is(div, figure):has(table) {
-  display: block !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  margin-inline: 0 !important;
-  inset-inline: auto !important;
-  translate: none !important;
-  transform: none !important;
-  overflow-x: auto !important;
-  overflow-y: visible !important;
-  overscroll-behavior-inline: contain !important;
-}
-
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown > table,
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown > table {
-  display: block !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-}
-
-/* Keep the table content anchored to the start of its working scroll area.
-   ChatGPT may center or end-align an inner table wrapper, which leaves a large
-   empty offset even while the horizontal scrollbar is at its left edge. */
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown > :is(div, figure):has(table) :is(div, figure):has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown > :is(div, figure):has(table) :is(div, figure):has(table),
-html[data-nyra-theme-studio="on"] [data-message-author-role="assistant"] .markdown > :is(div, figure):has(table) table,
-html[data-nyra-theme-studio="on"] [data-message-author-role="user"] .markdown > :is(div, figure):has(table) table {
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  inset-inline: auto !important;
-  translate: none !important;
-  transform: none !important;
-  float: none !important;
-  align-self: flex-start !important;
-  justify-self: start !important;
+html[data-nyra-theme-studio="on"] [data-testid="writing-block-header-surface"] {
+  background-color: var(--nyra-panel-bg) !important;
 }

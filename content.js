@@ -1,5 +1,4 @@
 const THEME_ATTRIBUTE = "data-nyra-theme-studio";
-const MATCH_ATTRIBUTE = "data-nyra-match-panels";
 const OLED_ATTRIBUTE = "data-oled";
 const STORAGE_KEY = "nyraThemeStudio";
 
@@ -10,10 +9,6 @@ const DEFAULT_THEME = {
   contentPanel: "#1f1d26",
   writingBlock: "#243a63",
   sidebar: "#1e1b26"
-};
-
-const DEFAULT_OPTIONS = {
-  matchPanelColorCodes: false
 };
 
 const LEGACY_KEYS = {
@@ -29,9 +24,10 @@ const LEGACY_KEYS = {
   sidebarBackground: "sidebar"
 };
 
-let activeTheme = { ...DEFAULT_THEME };
-let options = { ...DEFAULT_OPTIONS };
 let enabled = true;
+let palette = null;
+let strippedOledValue = null;
+let observedBody = null;
 
 function isHex(value) {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
@@ -42,10 +38,6 @@ function clamp(value) {
 }
 
 function hexToRgb(hex) {
-  if (!isHex(hex)) {
-    return { r: 34, g: 32, b: 42 };
-  }
-
   return {
     r: Number.parseInt(hex.slice(1, 3), 16),
     g: Number.parseInt(hex.slice(3, 5), 16),
@@ -68,9 +60,9 @@ function mix(baseHex, targetHex, amount) {
   });
 }
 
-function transparentRgb(hex) {
+function withAlpha(hex, alpha) {
   const rgb = hexToRgb(hex);
-  return `rgb(${rgb.r} ${rgb.g} ${rgb.b} / 0)`;
+  return `rgb(${rgb.r} ${rgb.g} ${rgb.b} / ${alpha})`;
 }
 
 function sanitize(theme) {
@@ -97,363 +89,221 @@ function sanitize(theme) {
   return result;
 }
 
-function normalizeOptions(_value) {
-  return { matchPanelColorCodes: false };
-}
-
 function normalizeState(value) {
   if (!value || typeof value !== "object") {
-    return { enabled: true, theme: { ...DEFAULT_THEME }, options: { ...DEFAULT_OPTIONS } };
+    return { enabled: true, theme: { ...DEFAULT_THEME } };
   }
 
-  if ("theme" in value || "enabled" in value || "options" in value) {
+  if ("theme" in value || "enabled" in value) {
     return {
       enabled: value.enabled !== false,
-      theme: sanitize(value.theme || value),
-      options: normalizeOptions(value.options)
+      theme: sanitize(value.theme || value)
     };
   }
 
+  return { enabled: true, theme: sanitize(value) };
+}
+
+/* Six user colors become the full palette. Raised and hover shades are
+   white mixed into the base color, the same way ChatGPT layers its grays. */
+function buildPalette(theme) {
+  const { chatBackground, messageBubble, inputBox, contentPanel, writingBlock, sidebar } = sanitize(theme);
+
   return {
-    enabled: true,
-    theme: sanitize(value),
-    options: { ...DEFAULT_OPTIONS }
+    "--nyra-chat-bg": chatBackground,
+    "--nyra-chat-raised": mix(chatBackground, "#ffffff", 0.06),
+    "--nyra-chat-raised-2": mix(chatBackground, "#ffffff", 0.12),
+    "--nyra-chat-glass": withAlpha(chatBackground, 0.9),
+    "--nyra-message-bg": messageBubble,
+    "--nyra-input-bg": inputBox,
+    "--nyra-input-raised": mix(inputBox, "#ffffff", 0.07),
+    "--nyra-input-raised-2": mix(inputBox, "#ffffff", 0.13),
+    "--nyra-panel-bg": contentPanel,
+    "--nyra-panel-raised": mix(contentPanel, "#ffffff", 0.07),
+    "--nyra-panel-header-bg": mix(contentPanel, "#000000", 0.2),
+    "--nyra-panel-border": mix(contentPanel, "#ffffff", 0.1),
+    "--nyra-code-bg": mix(contentPanel, "#ffffff", 0.12),
+    "--nyra-writing-block-bg": writingBlock,
+    "--nyra-writing-block-border": mix(writingBlock, "#ffffff", 0.08),
+    "--nyra-sidebar-bg": sidebar,
+    "--nyra-sidebar-hover-bg": mix(sidebar, "#ffffff", 0.08),
+    "--nyra-sidebar-selected-bg": mix(sidebar, "#ffffff", 0.14)
   };
 }
 
-function buildTheme(theme) {
-  const safeTheme = sanitize(theme);
+/* Every custom property written on <html>; theme.css maps ChatGPT's own
+   design tokens onto these. */
+const PALETTE_PROPERTIES = Object.keys(buildPalette(DEFAULT_THEME));
 
-  return {
-    ...safeTheme,
-    inputBorder: mix(safeTheme.inputBox, "#ffffff", 0.12),
-    messageBorder: mix(safeTheme.messageBubble, "#ffffff", 0.07),
-    contentPanelBorder: mix(safeTheme.contentPanel, "#ffffff", 0.08),
-    contentPanelButton: mix(safeTheme.contentPanel, "#ffffff", 0.14),
-    writingBlockBorder: mix(safeTheme.writingBlock, "#ffffff", 0.08),
-    sidebarHover: mix(safeTheme.sidebar, "#ffffff", 0.08),
-    sidebarSelected: mix(safeTheme.sidebar, "#ffffff", 0.16),
-    inlineCode: mix(safeTheme.contentPanel, "#ffffff", 0.12)
-  };
-}
-
-function setVar(name, value) {
-  document.documentElement.style.setProperty(name, value, "important");
-}
-
-function removeVar(name) {
-  document.documentElement.style.removeProperty(name);
-}
-
-function clearLegacyInlineMatches() {
-  for (const element of document.querySelectorAll("[data-nyra-panel-color-match], [data-nyra-content-panel], [data-nyra-content-panel-header]")) {
-    const originalStyle = element.getAttribute("data-nyra-original-style");
-
-    if (originalStyle === "") {
-      element.removeAttribute("style");
-    } else if (originalStyle !== null) {
-      element.setAttribute("style", originalStyle);
-    }
-
-    element.removeAttribute("data-nyra-original-style");
-    element.removeAttribute("data-nyra-panel-color-match");
-    element.removeAttribute("data-nyra-content-panel");
-    element.removeAttribute("data-nyra-content-panel-header");
-  }
-}
-
-function updateLayoutVariables() {
-  if (!enabled) {
-    clearLegacyInlineMatches();
-    return;
-  }
-
-  if (document.documentElement.hasAttribute(OLED_ATTRIBUTE)) {
-    document.documentElement.removeAttribute(OLED_ATTRIBUTE);
-  }
-}
-
-function clearTheme() {
-  enabled = false;
-  document.documentElement.removeAttribute(THEME_ATTRIBUTE);
-  document.documentElement.removeAttribute(MATCH_ATTRIBUTE);
-  document.documentElement.style.colorScheme = "";
-  document.body?.removeAttribute(THEME_ATTRIBUTE);
-  clearLegacyInlineMatches();
-
-  for (const name of [
-    "--nyra-chat-bg",
-    "--nyra-chat-bg-transparent",
-    "--nyra-message-bg",
-    "--nyra-message-border",
-    "--nyra-input-bg",
-    "--nyra-input-border",
-    "--nyra-panel-bg",
-    "--nyra-panel-border",
-    "--nyra-panel-button-bg",
-    "--nyra-writing-block-bg",
-    "--nyra-writing-block-border",
-    "--nyra-sidebar-bg",
-    "--nyra-sidebar-hover-bg",
-    "--nyra-sidebar-selected-bg",
-    "--nyra-code-bg",
-    "--main-surface-primary",
-    "--main-surface-secondary",
-    "--main-surface-tertiary",
-    "--surface-primary",
-    "--surface-secondary",
-    "--surface-tertiary",
-    "--bg-elevated-primary",
-    "--bg-elevated-secondary",
-    "--bg-elevated-tertiary",
-    "--sidebar-surface-primary",
-    "--sidebar-surface-secondary",
-    "--composer-surface",
-    "--composer-surface-primary",
-    "--message-surface"
-  ]) {
-    removeVar(name);
-  }
-}
-
-function applyTheme(theme, shouldEnable = true, nextOptions = options) {
-  enabled = shouldEnable !== false;
-  options = normalizeOptions(nextOptions);
-
-  if (!enabled) {
-    clearTheme();
-    return;
-  }
-
-  activeTheme = sanitize(theme);
-  const fullTheme = buildTheme(activeTheme);
-
-  document.documentElement.setAttribute(THEME_ATTRIBUTE, "on");
-  document.documentElement.setAttribute(MATCH_ATTRIBUTE, "off");
-  document.documentElement.style.colorScheme = "dark";
-
-  setVar("--nyra-chat-bg", fullTheme.chatBackground);
-  setVar("--nyra-chat-bg-transparent", transparentRgb(fullTheme.chatBackground));
-  setVar("--nyra-message-bg", fullTheme.messageBubble);
-  setVar("--nyra-message-border", fullTheme.messageBorder);
-  setVar("--nyra-input-bg", fullTheme.inputBox);
-  setVar("--nyra-input-border", fullTheme.inputBorder);
-  setVar("--nyra-panel-bg", fullTheme.contentPanel);
-  setVar("--nyra-panel-border", fullTheme.contentPanelBorder);
-  setVar("--nyra-panel-button-bg", fullTheme.contentPanelButton);
-  setVar("--nyra-writing-block-bg", fullTheme.writingBlock);
-  setVar("--nyra-writing-block-border", fullTheme.writingBlockBorder);
-  setVar("--nyra-sidebar-bg", fullTheme.sidebar);
-  setVar("--nyra-sidebar-hover-bg", fullTheme.sidebarHover);
-  setVar("--nyra-sidebar-selected-bg", fullTheme.sidebarSelected);
-  setVar("--nyra-code-bg", fullTheme.inlineCode);
-
-  setVar("--main-surface-primary", "var(--nyra-chat-bg)");
-  setVar("--surface-primary", "var(--nyra-chat-bg)");
-  setVar("--sidebar-surface-primary", "var(--nyra-sidebar-bg)");
-  setVar("--sidebar-surface-secondary", "var(--nyra-sidebar-hover-bg)");
-  setVar("--composer-surface", "var(--nyra-input-bg)");
-  setVar("--composer-surface-primary", "var(--nyra-input-bg)");
-  setVar("--message-surface", "var(--nyra-message-bg)");
-
-  removeVar("--main-surface-secondary");
-  removeVar("--main-surface-tertiary");
-  removeVar("--surface-secondary");
-  removeVar("--surface-tertiary");
-  removeVar("--bg-elevated-primary");
-  removeVar("--bg-elevated-secondary");
-  removeVar("--bg-elevated-tertiary");
-
-  if (document.body) {
-    document.body.setAttribute(THEME_ATTRIBUTE, "on");
-  }
-
-  updateLayoutVariables();
-}
-
-function loadTheme() {
-  chrome.storage.local.get({ [STORAGE_KEY]: { enabled: true, theme: DEFAULT_THEME, options: DEFAULT_OPTIONS } }, (result) => {
-    const state = normalizeState(result[STORAGE_KEY]);
-    applyTheme(state.theme, state.enabled, state.options);
-  });
-}
-
-function installListeners() {
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !changes[STORAGE_KEY]) {
-      return;
-    }
-
-    const state = normalizeState(changes[STORAGE_KEY].newValue);
-    applyTheme(state.theme, state.enabled, state.options);
-  });
-
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message || message.type !== "NYRA_THEME_APPLY") {
-      return false;
-    }
-
-    applyTheme(message.theme || DEFAULT_THEME, message.enabled !== false, message.options || DEFAULT_OPTIONS);
-    sendResponse({ ok: true });
-    return true;
-  });
-}
-
-/* ChatGPT often scrolls an inner conversation container instead of the page.
-   We only force an initial jump to the bottom during startup. */
-const START_AT_BOTTOM_DELAYS = [0, 120, 260, 500, 900];
-const START_AT_BOTTOM_KEYS = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
-let startAtBottomTimers = [];
-
-function isDocumentScroller(element) {
-  return element === document.scrollingElement || element === document.documentElement || element === document.body;
-}
-
-function hasVerticalScroll(element) {
+function readThemeMarker(element) {
   if (!element) {
-    return false;
+    return null;
   }
 
-  if (isDocumentScroller(element)) {
-    return element.scrollHeight > Math.max(window.innerHeight || 0, element.clientHeight || 0) + 2;
+  const markers = [
+    element.getAttribute("data-theme"),
+    element.getAttribute("data-color-scheme")
+  ].map((value) => (value || "").toLowerCase());
+
+  if (element.classList.contains("light") || markers.includes("light")) {
+    return "light";
   }
 
-  const style = getComputedStyle(element);
-  const permitsScroll = /(auto|scroll|overlay)/.test(style.overflowY);
-  return permitsScroll && element.scrollHeight > element.clientHeight + 2;
+  if (element.classList.contains("dark") || markers.includes("dark")) {
+    return "dark";
+  }
+
+  return null;
 }
 
-function getConversationRoot() {
-  return document.getElementById("thread")
-    || document.querySelector("section[data-testid^='conversation-turn-']");
+/* Nyra presets are dark palettes, so they only apply while ChatGPT itself is
+   in its dark appearance. Light mode keeps ChatGPT's native look. */
+function isDarkAppearance() {
+  const root = document.documentElement;
+  const marker = readThemeMarker(root) || readThemeMarker(document.body);
+
+  if (marker) {
+    return marker === "dark";
+  }
+
+  const scheme = root.style.colorScheme;
+
+  if (scheme) {
+    return scheme.includes("dark");
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function findConversationScroller() {
-  const conversationRoot = getConversationRoot();
-
-  for (let element = conversationRoot; element; element = element.parentElement) {
-    if (hasVerticalScroll(element)) {
-      return element;
+function writePalette(root) {
+  for (const [name, value] of Object.entries(palette)) {
+    if (root.style.getPropertyValue(name) !== value) {
+      root.style.setProperty(name, value);
     }
   }
-
-  const documentScroller = document.scrollingElement || document.documentElement;
-
-  if (hasVerticalScroll(documentScroller)) {
-    return documentScroller;
-  }
-
-  const candidates = document.querySelectorAll(
-    conversationRoot
-      ? "main, [role='main'], .overflow-y-auto, .overflow-auto"
-      : "main, [role='main']"
-  );
-  let bestCandidate = null;
-  let bestScore = -1;
-
-  for (const candidate of candidates) {
-    if (!hasVerticalScroll(candidate)) {
-      continue;
-    }
-
-    const containsConversation = conversationRoot && candidate.contains(conversationRoot);
-    const score = (containsConversation ? 1_000_000 : 0)
-      + Math.max(0, candidate.clientHeight)
-      + Math.max(0, candidate.scrollHeight - candidate.clientHeight);
-
-    if (score > bestScore) {
-      bestCandidate = candidate;
-      bestScore = score;
-    }
-  }
-
-  return bestCandidate || documentScroller;
 }
 
-function setScrollTop(scroller, value) {
-  const y = Math.max(0, Number(value) || 0);
+function clearPalette(root) {
+  for (const name of PALETTE_PROPERTIES) {
+    if (root.style.getPropertyValue(name)) {
+      root.style.removeProperty(name);
+    }
+  }
+}
 
-  if (!scroller) {
+/* Idempotent: safe to call from the attribute observer, which also sees the
+   changes made here. */
+function sync() {
+  const root = document.documentElement;
+
+  if (!root) {
     return;
   }
 
-  if (isDocumentScroller(scroller)) {
-    window.scrollTo({ top: y, left: window.scrollX || 0, behavior: "auto" });
-    scroller.scrollTop = y;
-    return;
-  }
+  if (enabled && palette && isDarkAppearance()) {
+    writePalette(root);
 
-  scroller.scrollTop = y;
-}
-
-function clearStartAtBottomTimers() {
-  for (const timer of startAtBottomTimers) {
-    clearTimeout(timer);
-  }
-
-  startAtBottomTimers = [];
-}
-
-function scrollConversationToBottom() {
-  const scroller = findConversationScroller();
-
-  if (!scroller || !hasVerticalScroll(scroller)) {
-    return false;
-  }
-
-  const maxTop = Math.max(
-    0,
-    scroller.scrollHeight - (
-      isDocumentScroller(scroller)
-        ? Math.max(window.innerHeight || 0, scroller.clientHeight || 0)
-        : scroller.clientHeight
-    )
-  );
-
-  setScrollTop(scroller, maxTop);
-  return maxTop > 0;
-}
-
-function scheduleStartAtBottom() {
-  clearStartAtBottomTimers();
-
-  for (const delay of START_AT_BOTTOM_DELAYS) {
-    startAtBottomTimers.push(setTimeout(() => {
-      scrollConversationToBottom();
-    }, delay));
-  }
-}
-
-function installStartAtBottom() {
-  if (window.__nyraStartAtBottomInstalled) {
-    return;
-  }
-
-  window.__nyraStartAtBottomInstalled = true;
-  const stopForUser = () => clearStartAtBottomTimers();
-
-  window.addEventListener("wheel", stopForUser, { passive: true });
-  window.addEventListener("touchstart", stopForUser, { passive: true });
-  window.addEventListener("pointerdown", stopForUser, { passive: true });
-  window.addEventListener("keydown", (event) => {
-    if (START_AT_BOTTOM_KEYS.includes(event.key)) {
-      stopForUser();
+    if (root.getAttribute(THEME_ATTRIBUTE) !== "on") {
+      root.setAttribute(THEME_ATTRIBUTE, "on");
     }
-  }, { passive: true });
-  window.addEventListener("pageshow", scheduleStartAtBottom, { passive: true });
+
+    // The OLED variant paints pure black through selectors keyed on this
+    // attribute. Keep it off while the theme is active.
+    if (root.hasAttribute(OLED_ATTRIBUTE)) {
+      strippedOledValue = root.getAttribute(OLED_ATTRIBUTE);
+      root.removeAttribute(OLED_ATTRIBUTE);
+    }
+
+    return;
+  }
+
+  if (root.hasAttribute(THEME_ATTRIBUTE)) {
+    root.removeAttribute(THEME_ATTRIBUTE);
+  }
+
+  clearPalette(root);
+
+  if (strippedOledValue !== null) {
+    if (isDarkAppearance() && !root.hasAttribute(OLED_ATTRIBUTE)) {
+      root.setAttribute(OLED_ATTRIBUTE, strippedOledValue);
+    }
+
+    strippedOledValue = null;
+  }
 }
 
-loadTheme();
-installListeners();
-installStartAtBottom();
+function applyState(state) {
+  enabled = state.enabled;
+  palette = buildPalette(state.theme);
+  sync();
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-  applyTheme(activeTheme, enabled, options);
-  setTimeout(updateLayoutVariables, 250);
-  scheduleStartAtBottom();
-}, { once: true });
+const THEME_MARKER_ATTRIBUTES = ["class", "data-theme", "data-color-scheme"];
 
-requestAnimationFrame(() => {
-  applyTheme(activeTheme, enabled, options);
-  scheduleStartAtBottom();
+/* Watches a handful of attributes on <html> and <body> only: the dark/light
+   switch, the OLED marker and our own attribute and palette. */
+const rootObserver = new MutationObserver(sync);
+
+function observeRoot() {
+  rootObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: [...THEME_MARKER_ATTRIBUTES, "style", OLED_ATTRIBUTE, THEME_ATTRIBUTE]
+  });
+}
+
+function observeBody() {
+  if (!document.body || observedBody === document.body) {
+    return;
+  }
+
+  observedBody = document.body;
+  rootObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: THEME_MARKER_ATTRIBUTES
+  });
+  sync();
+}
+
+function getStatus() {
+  return {
+    ok: true,
+    dark: isDarkAppearance(),
+    active: document.documentElement.getAttribute(THEME_ATTRIBUTE) === "on"
+  };
+}
+
+chrome.storage.local.get({ [STORAGE_KEY]: null }, (result) => {
+  applyState(normalizeState(result[STORAGE_KEY]));
 });
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes[STORAGE_KEY]) {
+    return;
+  }
+
+  applyState(normalizeState(changes[STORAGE_KEY].newValue));
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message) {
+    return false;
+  }
+
+  if (message.type === "NYRA_THEME_APPLY") {
+    applyState({ enabled: message.enabled !== false, theme: sanitize(message.theme) });
+    sendResponse(getStatus());
+    return false;
+  }
+
+  if (message.type === "NYRA_THEME_STATUS") {
+    sendResponse(getStatus());
+    return false;
+  }
+
+  return false;
+});
+
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", sync);
+observeRoot();
+observeBody();
+document.addEventListener("DOMContentLoaded", observeBody, { once: true });
